@@ -81,6 +81,34 @@ class ContactList extends StatefulWidget {
 
 class _ContactListState extends State<ContactList> {
   final ContactService _contactService = ContactService();
+  late List<Contact> _contacts;
+  late List<Contact> _filteredContacts;
+
+  @override
+  void initState() {
+    super.initState();
+    _contacts = [];
+    _filteredContacts = [];
+    _refreshContactList();
+  }
+
+  Future<void> _refreshContactList() async {
+    List<Contact> contacts = await _contactService.getContacts();
+    setState(() {
+      _contacts = contacts;
+      _filteredContacts = contacts;
+    });
+  }
+
+  void _filterContacts(String query) {
+    setState(() {
+      _filteredContacts = _contacts
+          .where((contact) =>
+              contact.name.toLowerCase().contains(query.toLowerCase()) ||
+              contact.phoneNumber.contains(query))
+          .toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,46 +116,53 @@ class _ContactListState extends State<ContactList> {
       appBar: AppBar(
         title: Text('Contacts'),
       ),
-      body: FutureBuilder<List<Contact>>(
-        future: _contactService.getContacts(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else {
-            List<Contact> contacts = snapshot.data ?? [];
-            return ListView.builder(
-              itemCount: contacts.length,
+      body: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.all(8.0),
+            child: TextField(
+              onChanged: _filterContacts,
+              decoration: InputDecoration(
+                labelText: 'Search Contacts',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _filteredContacts.length,
               itemBuilder: (context, index) {
                 return ListTile(
-                  title: Text(contacts[index].name),
-                  subtitle: Text(contacts[index].phoneNumber),
+                  title: Text(_filteredContacts[index].name),
+                  subtitle: Text(_filteredContacts[index].phoneNumber),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         icon: Icon(Icons.edit),
                         onPressed: () {
-                          _navigateToUpdateContact(context, contacts[index]);
+                          _navigateToUpdateContact(context, _filteredContacts[index]);
                         },
                       ),
                       IconButton(
                         icon: Icon(Icons.delete),
                         onPressed: () {
-                          _deleteContact(contacts[index].id);
+                          _deleteContact(_filteredContacts[index].id);
                         },
                       ),
                     ],
                   ),
                   onTap: () {
-                    _navigateToUpdateContact(context, contacts[index]);
+                    _navigateToUpdateContact(context, _filteredContacts[index]);
                   },
                 );
               },
-            );
-          }
-        },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
@@ -144,6 +179,7 @@ class _ContactListState extends State<ContactList> {
       context,
       MaterialPageRoute(builder: (context) => AddContactScreen(_contactService)),
     );
+    _refreshContactList(); // Refresh UI after returning from AddContactScreen
   }
 
   Future<void> _navigateToUpdateContact(BuildContext context, Contact contact) async {
@@ -151,19 +187,14 @@ class _ContactListState extends State<ContactList> {
       context,
       MaterialPageRoute(builder: (context) => UpdateContactScreen(_contactService, contact)),
     );
-    _refreshContactList(); // Refresh UI after updating contact
+    _refreshContactList(); // Refresh UI after returning from UpdateContactScreen
   }
 
   Future<void> _deleteContact(String id) async {
     await _contactService.deleteContact(id);
     _refreshContactList(); // Refresh UI after deleting contact
   }
-
-  void _refreshContactList() {
-    setState(() {}); // Refresh UI by rebuilding widget tree
-  }
 }
-
 class AddContactScreen extends StatelessWidget {
   final ContactService _contactService;
   final TextEditingController nameController = TextEditingController();
