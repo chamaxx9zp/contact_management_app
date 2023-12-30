@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'contact.dart';
 import 'contact_service.dart';
 
@@ -226,6 +227,11 @@ class AddContactScreen extends StatelessWidget {
               decoration: InputDecoration(
                 labelText: 'Phone Number',
               ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ],
             ),
             SizedBox(height: 24.0),
             ElevatedButton(
